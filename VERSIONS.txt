@@ -1,0 +1,5 @@
+CredentialsSolid
+
+Version 0.0.1 (7/31/21)
+	Initial version.
+
