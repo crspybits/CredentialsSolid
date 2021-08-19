@@ -38,15 +38,6 @@
         }
       },
       {
-        "package": "Signals",
-        "repositoryURL": "https://github.com/Kitura/BlueSignals.git",
-        "state": {
-          "branch": null,
-          "revision": "1f6c49e186c8a4eeef87ba14f2f97b8646559d13",
-          "version": "1.0.200"
-        }
-      },
-      {
         "package": "Socket",
         "repositoryURL": "https://github.com/Kitura/BlueSocket.git",
         "state": {
@@ -146,21 +137,12 @@
         }
       },
       {
-        "package": "OpenSSL",
-        "repositoryURL": "https://github.com/Kitura/OpenSSL.git",
-        "state": {
-          "branch": null,
-          "revision": "80b04f33b086fc90e28d9ae159d43705fb348e16",
-          "version": "2.2.200"
-        }
-      },
-      {
         "package": "SolidAuthSwift",
         "repositoryURL": "https://github.com/crspybits/SolidAuthSwift.git",
         "state": {
           "branch": null,
-          "revision": "ff225b943b7863b34d4c77905406a55bce8d733f",
-          "version": "0.0.3"
+          "revision": "86af9c5bd719fa98b8ab7844caf6502bc5b8838e",
+          "version": "0.0.4"
         }
       },
       {

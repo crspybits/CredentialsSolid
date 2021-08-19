@@ -8,17 +8,13 @@ import Foundation
 import LoggerAPI
 import SolidAuthSwiftTools
 
-public let tokenType = "SolidToken"
-
-/// extendedProperties in the UserProfile will have the key `solidServerPacketKey`
-/// with a ServerPacket value.
-public let solidServerPacketKey = "solidServerPacket"
-
 /// Authentication a Solid Pod id token.
 public class CredentialsSolidToken: CredentialsPluginProtocol, CredentialsTokenTTL {
+    public static let tokenType = "SolidToken"
+
     /// The name of the plugin.
     public var name: String {
-        return tokenType
+        return Self.tokenType
     }
     
     /// An indication as to whether the plugin is redirecting or not.
@@ -30,7 +26,7 @@ public class CredentialsSolidToken: CredentialsPluginProtocol, CredentialsTokenT
     public let tokenTimeToLive: TimeInterval?
     
     private var delegate: UserProfileDelegate?
-    private var serverPacket: ServerPacket!
+    private var codeParameters: CodeParameters!
     private let decoder = JSONDecoder()
     private var jwksRequest:JwksRequest!
     
@@ -48,10 +44,13 @@ public class CredentialsSolidToken: CredentialsPluginProtocol, CredentialsTokenT
     /// User profile cache.
     public var usersCache: NSCache<NSString, BaseCacheElement>?
     
+    /// In the UserProfile `extendedProperties`, the codeParametersKey will have a value of the CodeParameters.
+    public static let codeParametersKey = "codeParameters"
+    
     private let tokenTypeKey = "X-token-type"
     private let idTokenKey = "id-token"
     
-    /// Will contain the base64 encoded ServerPacket
+    /// Will contain the base64 encoded CodeParameters
     private let accountDetailsKey = "X-account-details"
     
     /// Authenticate incoming request using Apple Sign In OAuth2 token.
@@ -73,30 +72,42 @@ public class CredentialsSolidToken: CredentialsPluginProtocol, CredentialsTokenT
                              onPass: @escaping (HTTPStatusCode?, [String:String]?) -> Void,
                              inProgress: @escaping () -> Void) {
 
-        guard let type = request.headers[tokenTypeKey], type == name else {
+        let type = request.headers[tokenTypeKey]
+        let idToken = request.headers[idTokenKey]
+        let base64CodeParametersString = request.headers[accountDetailsKey]
+
+        authenticate(type: type, idToken: idToken, base64CodeParametersString: base64CodeParametersString, options: options, onSuccess: onSuccess, onFailure: onFailure, onPass: onPass)
+    }
+    
+    // Split away from the main `authenticate` function for testing purposes.
+    func authenticate(type: String?, idToken: String?, base64CodeParametersString: String?, options: [String:Any], onSuccess: @escaping (UserProfile) -> Void,
+        onFailure: @escaping (HTTPStatusCode?, [String:String]?) -> Void,
+        onPass: @escaping (HTTPStatusCode?, [String:String]?) -> Void) {
+
+        guard let type = type, type == name else {
             onPass(nil, nil)
             return
         }
         
-        guard let idToken = request.headers[idTokenKey] else {
+        guard let idToken = idToken else {
             onFailure(nil, nil)
             return
         }
 
-        guard let base64ServerPacketString = request.headers[accountDetailsKey] else {
+        guard let base64CodeParametersString = base64CodeParametersString else {
             onFailure(nil, nil)
             return
         }
-
-        guard let serverPacketData = Data(base64Encoded: base64ServerPacketString) else {
+        
+        guard let codeParametersData = Data(base64Encoded: base64CodeParametersString) else {
             onFailure(nil, nil)
             return
         }
             
         do {
-            self.serverPacket = try JSONDecoder().decode(ServerPacket.self, from: serverPacketData)
+            self.codeParameters = try JSONDecoder().decode(CodeParameters.self, from: codeParametersData)
         } catch let error {
-            Log.error("Could not decode ServerPacket: \(error)")
+            Log.error("Could not decode CodeParameters: \(error)")
             onFailure(nil, nil)
             return
         }
@@ -111,7 +122,7 @@ public class CredentialsSolidToken: CredentialsPluginProtocol, CredentialsTokenT
     // Validate the id token provided by the user-- to the extent we can (without checking its expiry).
     public func generateNewProfile(token: String, options: [String:Any], completion: @escaping (CredentialsTokenTTLResult) -> Void) {
 
-        jwksRequest = JwksRequest(jwksURL: self.serverPacket.parameters.jwksURL)
+        jwksRequest = JwksRequest(jwksURL: self.codeParameters.jwksURL)
         jwksRequest.send { [weak self] result in
             guard let self = self else { return }
             
@@ -130,7 +141,7 @@ public class CredentialsSolidToken: CredentialsPluginProtocol, CredentialsTokenT
                     return
                 }
                 
-                // Will not validate the Token object: Its expiry is known to go out of date.
+                // Have not validated the Token object: Its expiry is known to go out of date.
                 
                 guard let userProfile = self.createUserProfile(from: tokenObject.claims) else {
                     let result = CredentialsTokenTTLResult.error(CredentialsSolidTokenError.nilUserProfile)
@@ -144,19 +155,24 @@ public class CredentialsSolidToken: CredentialsPluginProtocol, CredentialsTokenT
     }
     
     func createUserProfile(from claims:TokenClaims) -> UserProfile? {
-        guard let webid = claims.webid else {
+        var id: String!
+                
+        if let webid = claims.webid {
+            id = webid
+        }
+        else if let sub = claims.sub {
+            id = sub
+        }
+        else {
+            Log.error("Could not get webid or sub from claims")
+            return nil
+        }
+            
+        guard let codeParameters = codeParameters else {
+            Log.error("nil codeParameters")
             return nil
         }
         
-        guard let serverPacket = self.serverPacket else {
-            return nil
-        }
-        
-        var userEmails: [UserProfile.UserProfileEmail]?
-        if let email = serverPacket.email {
-            userEmails = [UserProfile.UserProfileEmail(value: email, type: "")]
-        }
-        
-        return UserProfile(id: webid, displayName: serverPacket.username ?? "", provider: self.name, name: nil, emails: userEmails, photos: nil, extendedProperties: [solidServerPacketKey: serverPacket])
+        return UserProfile(id: id, displayName: "", provider: self.name, name: nil, emails: nil, photos: nil, extendedProperties: [Self.codeParametersKey : codeParameters])
     }
 }

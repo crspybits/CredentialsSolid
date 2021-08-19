@@ -1,5 +1,8 @@
 CredentialsSolid
 
+Version 0.0.2 (8.18/21)
+	Change away from using ServerPacket.
+    
 Version 0.0.1 (7/31/21)
 	Initial version.
 

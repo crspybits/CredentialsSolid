@@ -12,7 +12,7 @@ let package = Package(
             targets: ["CredentialsSolid"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/crspybits/SolidAuthSwift.git", from: "0.0.2"),
+        .package(url: "https://github.com/crspybits/SolidAuthSwift.git", from: "0.0.4"),
         .package(url: "https://github.com/IBM-Swift/Kitura-Credentials.git", .upToNextMajor(from: "2.4.1")),
         .package(url: "https://github.com/IBM-Swift/HeliumLogger.git", from: "1.8.1"),
     ],
@@ -24,5 +24,8 @@ let package = Package(
                 .product(name: "Credentials", package: "Kitura-Credentials"),
                 .product(name: "SolidAuthSwiftTools", package: "SolidAuthSwift"),
             ]),
+        .testTarget(
+            name: "CredentialsSolidTests",
+            dependencies: ["CredentialsSolid"]),
     ]
 )
