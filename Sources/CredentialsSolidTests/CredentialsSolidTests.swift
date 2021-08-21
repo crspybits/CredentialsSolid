@@ -17,6 +17,9 @@ import LoggerAPI
 struct Credentials: Codable {
     let idToken: String
     let accountDetails: String
+    
+    // The webid aka. sub for the user.
+    let accountId: String
 }
 
 final class CredentialsSolidTests: XCTestCase {
@@ -47,7 +50,7 @@ final class CredentialsSolidTests: XCTestCase {
     func testWithNoTypePasses() {
         var pass = false
         
-        credentialsSolidToken.authenticate(type: nil, idToken: nil, base64CodeParametersString: nil, options: [:],
+        credentialsSolidToken.authenticate(type: nil, idToken: nil, base64CodeParametersString: nil, accountId: nil, options: [:],
         onSuccess: { profile in
             XCTFail()
         },
@@ -65,7 +68,7 @@ final class CredentialsSolidTests: XCTestCase {
     func testWithWrongTypePasses() {
         var pass = false
         
-        credentialsSolidToken.authenticate(type: "Foobar", idToken: nil, base64CodeParametersString: nil, options: [:],
+        credentialsSolidToken.authenticate(type: "Foobar", idToken: nil, base64CodeParametersString: nil, accountId: nil, options: [:],
         onSuccess: { profile in
             XCTFail()
         },
@@ -83,7 +86,7 @@ final class CredentialsSolidTests: XCTestCase {
     func testWithOnlyTypeFails() {
         var fail = false
         
-        credentialsSolidToken.authenticate(type: CredentialsSolidToken.tokenType, idToken: nil, base64CodeParametersString: nil, options: [:],
+        credentialsSolidToken.authenticate(type: CredentialsSolidToken.tokenType, idToken: nil, base64CodeParametersString: nil, accountId: nil, options: [:],
         onSuccess: { profile in
             XCTFail()
         },
@@ -106,7 +109,7 @@ final class CredentialsSolidTests: XCTestCase {
         
         var fail = false
         
-        credentialsSolidToken.authenticate(type: CredentialsSolidToken.tokenType, idToken: credentials.idToken, base64CodeParametersString: nil, options: [:],
+        credentialsSolidToken.authenticate(type: CredentialsSolidToken.tokenType, idToken: credentials.idToken, base64CodeParametersString: nil, accountId: nil, options: [:],
         onSuccess: { profile in
             XCTFail()
         },
@@ -129,7 +132,7 @@ final class CredentialsSolidTests: XCTestCase {
         
         var fail = false
         
-        credentialsSolidToken.authenticate(type: CredentialsSolidToken.tokenType, idToken: credentials.idToken, base64CodeParametersString: "Foo", options: [:],
+        credentialsSolidToken.authenticate(type: CredentialsSolidToken.tokenType, idToken: credentials.idToken, base64CodeParametersString: "Foo", accountId: nil, options: [:],
         onSuccess: { profile in
             XCTFail()
         },
@@ -152,13 +155,37 @@ final class CredentialsSolidTests: XCTestCase {
         
         let exp = expectation(description: "exp")
         
-        credentialsSolidToken.authenticate(type: CredentialsSolidToken.tokenType, idToken: credentials.idToken, base64CodeParametersString: credentials.accountDetails, options: [:],
+        credentialsSolidToken.authenticate(type: CredentialsSolidToken.tokenType, idToken: credentials.idToken, base64CodeParametersString: credentials.accountDetails, accountId: credentials.accountId, options: [:],
         onSuccess: { profile in
-            // Expected
+            Log.debug("profile.id: \(profile.id)")
             exp.fulfill()
         },
         onFailure: { httpStatusCode, dict in
             XCTFail("httpStatusCode: \(String(describing:httpStatusCode)); dict: \(String(describing: dict))")
+            exp.fulfill()
+        },
+        onPass: { httpStatusCode, dict in
+            XCTFail()
+            exp.fulfill()
+        })
+        
+        waitForExpectations(timeout: 10, handler: nil)
+    }
+    
+    func testWithValidTypeIdTokenAndCodeParametersButBadAccountIdFails() {
+        guard let credentials = credentials else {
+            XCTFail()
+            return
+        }
+        
+        let exp = expectation(description: "exp")
+        
+        credentialsSolidToken.authenticate(type: CredentialsSolidToken.tokenType, idToken: credentials.idToken, base64CodeParametersString: credentials.accountDetails, accountId: "Foobly", options: [:],
+        onSuccess: { profile in
+            XCTFail()
+            exp.fulfill()
+        },
+        onFailure: { httpStatusCode, dict in
             exp.fulfill()
         },
         onPass: { httpStatusCode, dict in
@@ -177,7 +204,7 @@ final class CredentialsSolidTests: XCTestCase {
         
         let exp = expectation(description: "exp")
         
-        credentialsSolidToken.authenticate(type: CredentialsSolidToken.tokenType, idToken: "Foobar", base64CodeParametersString: credentials.accountDetails, options: [:],
+        credentialsSolidToken.authenticate(type: CredentialsSolidToken.tokenType, idToken: "Foobar", base64CodeParametersString: credentials.accountDetails, accountId: nil, options: [:],
         onSuccess: { profile in
             XCTFail()
             exp.fulfill()

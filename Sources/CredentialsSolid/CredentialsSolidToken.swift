@@ -29,6 +29,7 @@ public class CredentialsSolidToken: CredentialsPluginProtocol, CredentialsTokenT
     private var codeParameters: CodeParameters!
     private let decoder = JSONDecoder()
     private var jwksRequest:JwksRequest!
+    private var accountId: String!
     
     /// A delegate for `UserProfile` manipulation.
     public var userProfileDelegate: UserProfileDelegate? {
@@ -53,6 +54,10 @@ public class CredentialsSolidToken: CredentialsPluginProtocol, CredentialsTokenT
     /// Will contain the base64 encoded CodeParameters
     private let accountDetailsKey = "X-account-details"
     
+    /// Will have the sub aka. webid for the Solid user.
+    // This is redundant with the value in the TokenClaims, but on the main server I want to be able to easily pull the account id from the headers and not make another Solid server request to decrypt the TokenClaims after the decryption here.
+    private let accountIdKey = "X-account-id"
+    
     /// Authenticate incoming request using Apple Sign In OAuth2 token.
     ///
     /// - Parameter request: The `RouterRequest` object used to get information
@@ -75,14 +80,13 @@ public class CredentialsSolidToken: CredentialsPluginProtocol, CredentialsTokenT
         let type = request.headers[tokenTypeKey]
         let idToken = request.headers[idTokenKey]
         let base64CodeParametersString = request.headers[accountDetailsKey]
+        let accountId = request.headers[accountIdKey]
 
-        authenticate(type: type, idToken: idToken, base64CodeParametersString: base64CodeParametersString, options: options, onSuccess: onSuccess, onFailure: onFailure, onPass: onPass)
+        authenticate(type: type, idToken: idToken, base64CodeParametersString: base64CodeParametersString, accountId: accountId,  options: options, onSuccess: onSuccess, onFailure: onFailure, onPass: onPass)
     }
     
     // Split away from the main `authenticate` function for testing purposes.
-    func authenticate(type: String?, idToken: String?, base64CodeParametersString: String?, options: [String:Any], onSuccess: @escaping (UserProfile) -> Void,
-        onFailure: @escaping (HTTPStatusCode?, [String:String]?) -> Void,
-        onPass: @escaping (HTTPStatusCode?, [String:String]?) -> Void) {
+    func authenticate(type: String?, idToken: String?, base64CodeParametersString: String?, accountId: String?, options: [String:Any], onSuccess: @escaping (UserProfile) -> Void, onFailure: @escaping (HTTPStatusCode?, [String:String]?) -> Void, onPass: @escaping (HTTPStatusCode?, [String:String]?) -> Void) {
 
         guard let type = type, type == name else {
             onPass(nil, nil)
@@ -94,6 +98,13 @@ public class CredentialsSolidToken: CredentialsPluginProtocol, CredentialsTokenT
             return
         }
 
+        guard let accountId = accountId else {
+            onFailure(nil, nil)
+            return
+        }
+        
+        self.accountId = accountId
+        
         guard let base64CodeParametersString = base64CodeParametersString else {
             onFailure(nil, nil)
             return
@@ -165,6 +176,11 @@ public class CredentialsSolidToken: CredentialsPluginProtocol, CredentialsTokenT
         }
         else {
             Log.error("Could not get webid or sub from claims")
+            return nil
+        }
+        
+        guard self.accountId == id else {
+            Log.error("HTTP header account id \(String(describing: self.accountId)) didn't match that in TokenClaims: \(String(describing: id))")
             return nil
         }
             

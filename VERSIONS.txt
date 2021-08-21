@@ -1,6 +1,9 @@
 CredentialsSolid
 
-Version 0.0.2 (8.18/21)
+Version 0.0.3 (8/21/21)
+	Added account id to the headers, for ease of access to host URL on server.
+
+Version 0.0.2 (8/18/21)
 	Change away from using ServerPacket.
     
 Version 0.0.1 (7/31/21)
