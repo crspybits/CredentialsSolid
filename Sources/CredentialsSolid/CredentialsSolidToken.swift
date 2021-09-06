@@ -152,6 +152,8 @@ public class CredentialsSolidToken: CredentialsPluginProtocol, CredentialsTokenT
                     return
                 }
                 
+                Log.debug("Expiry: \(String(describing: tokenObject.claims.exp))")
+                
                 // Have not validated the Token object: Its expiry is known to go out of date.
                 
                 guard let userProfile = self.createUserProfile(from: tokenObject.claims) else {
