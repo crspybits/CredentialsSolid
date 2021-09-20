@@ -1,5 +1,9 @@
 CredentialsSolid
 
+Version 0.0.4 (9/19/21)
+    Update for changes to SolidAuthSwift. E.g., switch to using
+        ServerParameters.
+
 Version 0.0.3 (8/21/21)
 	Added account id to the headers, for ease of access to host URL on server.
 
